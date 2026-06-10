@@ -47,3 +47,5 @@
 # MacOS specific
 .DS_Store
 **/*.env
+firmware/.vscode/c_cpp_properties.json
+firmware/.vscode/launch.json
