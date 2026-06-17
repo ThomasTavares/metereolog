@@ -21,7 +21,7 @@
 #include <driver/gpio.h>
 #include <Arduino.h>
 
-#define PLUVIOMETER_RESOLUTION 0.25
+#define PLUVIOMETER_RESOLUTION 0.10
 #define PLUVIOMETER_DIAMETER_MM 200.0
 
 typedef struct {
