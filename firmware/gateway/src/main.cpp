@@ -101,7 +101,6 @@ typedef struct __attribute__((packed)) {
     float bmp_press;
     float voltage;
     float current;
-    float uv_gauge;
 } Packet;
 
 void deserialize_packet(String raw_packet, Packet* p) {
@@ -119,8 +118,7 @@ void deserialize_packet(String raw_packet, Packet* p) {
         &p->bmp_alt,
         &p->bmp_press,
         &p->voltage,
-        &p->current,
-        &p->uv_gauge
+        &p->current
     );
 }
 
