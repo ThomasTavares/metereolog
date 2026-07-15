@@ -420,7 +420,7 @@ Packet read_sensors() {
     anemometer_reading = anemometer->read();
     packet.wind_speed = anemometer_reading.wind_speed;
     pluviometer_reading = pluviometer->read();
-    packet.rain_gauge = pluviometer_reading.collected_volume;
+    packet.rain_gauge = pluviometer_reading.collected_rain_mm;
     bmp_reading = bmp_sensor->read();
     packet.bmp_temp = bmp_reading.temperature;
     packet.bmp_alt = bmp_reading.altitude;
