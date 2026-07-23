@@ -42,7 +42,7 @@ class Pluviometer {
     private:
         gpio_num_t pin;
         unsigned long reed_count = 0;
-        unsigned long last_reed;
+        unsigned long last_reed = 0;
         volatile unsigned long contact_bounce = 0;
 };
 

@@ -94,3 +94,14 @@ bool LoRa::send_message(String message) {
     }
 }
 
+void LoRa::sleep() {
+    if (this->radio != nullptr) {
+        this->radio->sleep();
+    }
+}
+
+void LoRa::wake() {
+    if (this->radio != nullptr) {
+        this->radio->standby();
+    }
+}

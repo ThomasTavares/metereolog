@@ -28,6 +28,13 @@
 
 #define ELEGANTOTA_USE_ASYNC_WEBSERVER 1
 
+/* ============ PACKET SEND CONFIGS ===================*/
+#define PACKET_INTERVAL_MINUTES 5
+
+unsigned long previousMillis = 0;
+const unsigned long packetInterval = PACKET_INTERVAL_MINUTES * 60 * 1000;
+bool forceFirstSend = true;
+
 /* ============ WIFI CONFIGS ===================*/ 
 const char* ap_ssid = ENV_WIFI_AP_SSID;
 const char* ap_pwd = ENV_WIFI_AP_PWD;
@@ -476,7 +483,37 @@ Packet read_sensors() {
 }
 
 void loop() {
-    Packet packet = read_sensors();
+    wifi_client->sleep();
+
+    unsigned long currentMillis = millis();
+    if (currentMillis - previousMillis >= packetInterval || forceFirstSend) {
+        previousMillis = currentMillis;
+        forceFirstSend = false;
+
+        if (!forceFirstSend) lora->wake();
+
+        Packet packet = read_sensors();
+        String raw_packet = serialize_packet(&packet);
+        
+        write_line("aru_0_data.txt", raw_packet);
+        lora->send_message(raw_packet);
+
+        display->display_message(
+            "Time: " + rtc->get_time_formatted()
+            + "\nRain: " + String(packet.rain_gauge)
+            + "\nTemp: " + String(packet.bmp_temp) + " " + String(packet.dht_temp)
+            + "\nHum: " + String(packet.dht_hum)
+            + " Press: " + String(packet.bmp_press)
+            + "\nVolt" + String(packet.voltage) + " " + String(packet.raw_voltage)
+            + "\nAlt: " + String(packet.bmp_alt)
+            + " Dir: " + packet.wind_dir
+            + "\n Wind Speed: : " + packet.wind_speed
+        );
+
+        lora->sleep();
+    }
+
+    /* Packet packet = read_sensors();
     // loop_webserver();
     // serializeJsonPretty(doc, Serial);
     // serializeJson(doc, msg_buffer);
@@ -499,6 +536,6 @@ void loop() {
     // String time = rtc->get_time_formatted();
     // display->display_message("Time: " + time);
     // Serial.print("Time: ");
-    // Serial.println(time);
+    // Serial.println(time); */
     delay(100);
 }
