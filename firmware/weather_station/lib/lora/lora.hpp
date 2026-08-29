@@ -33,6 +33,7 @@ class LoRa {
         bool begin();
         void sleep();
         void wake();
+        void change_mode(Mode mode);
 
     private:
         SX1262 *radio = nullptr;

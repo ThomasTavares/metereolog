@@ -29,9 +29,10 @@
 #define ELEGANTOTA_USE_ASYNC_WEBSERVER 1
 
 /* ============ PACKET SEND CONFIGS ===================*/
-#define PACKET_INTERVAL_MINUTES 5
+#define ACK_ATTEMPTS 5
 
 unsigned long previousMillis = 0;
+unsigned long previousAckMillis = 0;
 const unsigned long packetInterval = PACKET_INTERVAL_MINUTES * 60 * 1000;
 bool forceFirstSend = true;
 
@@ -165,21 +166,11 @@ AsyncWebServer server(80);
 char msg_buffer[255]; 
 
 
-String serialize_packet(const Packet* p) {
-    String raw_packet = "";
-    raw_packet += String(p->device_id) + "|";
-    raw_packet += String(p->timestamp) + "|";
-    raw_packet += String(p->wind_dir) + "|";
-    raw_packet += String(p->dht_hum) + "|";
-    raw_packet += String(p->dht_temp) + "|";
-    raw_packet += String(p->wind_speed) + "|";
-    raw_packet += String(p->rain_gauge) + "|";
-    raw_packet += String(p->bmp_temp) + "|";
-    raw_packet += String(p->bmp_alt) + "|";
-    raw_packet += String(p->bmp_press) + "|";
-    raw_packet += String(p->voltage) + "|";
-    raw_packet += String(p->current);
-    return raw_packet;
+void serialize_packet(const Packet* p, char* buffer, size_t max_len) {
+    snprintf(buffer, max_len, "%s|%lu|%s|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f",
+             p->device_id, p->timestamp, p->wind_dir, p->dht_hum, p->dht_temp,
+             p->wind_speed, p->rain_gauge, p->bmp_temp, p->bmp_alt,
+             p->bmp_press, p->voltage, p->current);
 }
 
 void pretty_print_packet(const Packet* p) {
@@ -344,7 +335,7 @@ bool write_line(String filename, String line) {
 }
 
 void setup_network() {
-    lora = new LoRa(NSS_LORA, DIO1_LORA, RESET_LORA, BUSY_LORA, BAND, BANDWIDTH, SPREADING_FACTOR, CODING_RATE, LORA_POWER, Receptor);
+    lora = new LoRa(NSS_LORA, DIO1_LORA, RESET_LORA, BUSY_LORA, BAND, BANDWIDTH, SPREADING_FACTOR, CODING_RATE, LORA_POWER, Transmitter);
     wifi_client = new Wifi((char *)ssid, (char *)password, (char *)ap_ssid, (char *)ap_pwd);
     lora->begin();
 }
@@ -405,11 +396,12 @@ void setup(){
         setup_network();
         setup_rtc();
         setup_sensors();
+        // setup_sdcard();
     } catch (const std::runtime_error& error) {
         esp_restart();
     }
-    setup_sdcard();
     // setup_webserver();
+    wifi_client->sleep();
     display->display_message("Configured!");
 };
 
@@ -483,8 +475,6 @@ Packet read_sensors() {
 }
 
 void loop() {
-    wifi_client->sleep();
-
     unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= packetInterval || forceFirstSend) {
         previousMillis = currentMillis;
@@ -493,22 +483,35 @@ void loop() {
         if (!forceFirstSend) lora->wake();
 
         Packet packet = read_sensors();
-        String raw_packet = serialize_packet(&packet);
-        
-        write_line("aru_0_data.txt", raw_packet);
+        serialize_packet(&packet, msg_buffer, sizeof(msg_buffer));
+        String raw_packet = String(msg_buffer);
+
+        // write_line("aru_0_data.txt", raw_packet);
         lora->send_message(raw_packet);
 
-        display->display_message(
-            "Time: " + rtc->get_time_formatted()
-            + "\nRain: " + String(packet.rain_gauge)
-            + "\nTemp: " + String(packet.bmp_temp) + " " + String(packet.dht_temp)
-            + "\nHum: " + String(packet.dht_hum)
-            + " Press: " + String(packet.bmp_press)
-            + "\nVolt" + String(packet.voltage) + " " + String(packet.raw_voltage)
-            + "\nAlt: " + String(packet.bmp_alt)
-            + " Dir: " + packet.wind_dir
-            + "\n Wind Speed: : " + packet.wind_speed
-        );
+        snprintf(msg_buffer, sizeof(msg_buffer),
+                 "Time: %s\nRain: %.2f\nTemp: %.2f %.2f\nHum: %.2f Press: %.2f\nVolt: %.2f %.2f\nAlt: %.2f Dir: %s\nWind Speed: %.2f",
+                 rtc->get_time_formatted().c_str(),
+                 packet.rain_gauge,
+                 packet.bmp_temp, packet.dht_temp,
+                 packet.dht_hum, packet.bmp_press,
+                 packet.voltage, packet.raw_voltage,
+                 packet.bmp_alt, packet.wind_dir,
+                 packet.wind_speed);
+        
+        display->display_message(String(msg_buffer));
+
+        /* lora->change_mode(Receptor);
+        previousAckMillis = millis();
+        while (millis() - previousAckMillis < ACK_ATTEMPTS * 1000) {
+            String ack_message = lora->get_packet();
+            if (ack_message == String(device_id)) {
+                Serial.println("ACK received from gateway.");
+                break;
+            }
+            delay(10);  // Delay for the WDT
+        }
+        lora->change_mode(Transmitter); */
 
         lora->sleep();
     }
