@@ -27,6 +27,9 @@
 #include "rtc.hpp"
 
 #define ELEGANTOTA_USE_ASYNC_WEBSERVER 1
+#define uS_TO_S_FACTOR 1000000ULL
+#define TIME_TO_SLEEP  5
+#define TX_CYCLES 5
 
 /* ============ PACKET SEND CONFIGS ===================*/
 #define ACK_ATTEMPTS 5
@@ -302,7 +305,6 @@ void setup_sdcard() {
     sd_spi->begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
     pinMode(SD_CS, OUTPUT);
     digitalWrite(SD_CS, HIGH);
-    Serial.printf("SPI initialized on SCLK=%d MISO=%d MOSI=%d CS=%d\n", SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
     int countdown = 3;
     while (!SD.begin(SD_CS, *sd_spi, 4000000)) {
         Serial.println("Card Mount Failed. Retrying...");
@@ -386,25 +388,6 @@ void loop_webserver() {
   ElegantOTA.loop();
 }
 
-void setup(){
-    Serial.begin(115200);
-    Serial.println("Metereolog Weather Station ARU 01 Starting...");
-    setup_display();
-    display->display_message("Metereolog Weather Station\nARU 01 Starting...");
-    try {
-        setup_i2c();
-        setup_network();
-        setup_rtc();
-        setup_sensors();
-        // setup_sdcard();
-    } catch (const std::runtime_error& error) {
-        esp_restart();
-    }
-    // setup_webserver();
-    wifi_client->sleep();
-    display->display_message("Configured!");
-};
-
 Packet read_sensors() {
     Packet packet;
     time_t current_time = rtc->get_time();
@@ -430,49 +413,29 @@ Packet read_sensors() {
     amperimeter_reading = amperimeter->read();
     packet.current = amperimeter_reading.current;
     return packet;
-    // JsonObject dht_temp = doc[dht_temp_id].to<JsonObject>();
-    // JsonObject dht_hum = doc[dht_hum_id].to<JsonObject>();
-    // dht_temp["value"] = dht_reading.temperature;
-    // dht_temp["timestamp"] = packet.timestamp;
-    // dht_hum["value"] = dht_reading.humidity;
-    // dht_hum["timestamp"] = dht_temp["timestamp"];
-
-    // JsonObject wind_dir = doc[anemoscope_id].to<JsonObject>();
-    // wind_dir["value"] = wind_direction_reading.direction; 
-    // wind_dir["timestamp"] = packet.timestamp;
-
-    // JsonObject anemometer_data = doc[anemometer_id].to<JsonObject>();
-    // anemometer_data["value"] = anemometer_reading.wind_speed;
-    // anemometer_data["timestamp"] = packet.timestamp;
-
-    // JsonObject pluviometer_data = doc[pluviometer_id].to<JsonObject>();
-    // pluviometer_data["value"] = pluviometer_reading.collected_volume;
-    // anemometer_data["timestamp"] = packet.timestamp;
-
-    // JsonObject bmp_temp_data = doc[bmp_temp_id].to<JsonObject>();
-    // JsonObject bmp_alt_data = doc[bmp_alt_id].to<JsonObject>();
-    // JsonObject bmp_press_data = doc[bmp_press_id].to<JsonObject>();
-    // bmp_temp_data["value"] = bmp_reading.temperature;
-    // bmp_alt_data["value"] = bmp_reading.altitude;
-    // bmp_press_data["value"] = bmp_reading.pressure;
-    // bmp_temp_data["timestamp"] = packet.timestamp;
-    // bmp_alt_data["timestamp"] = bmp_temp_data["timestamp"];
-    // bmp_press_data["timestamp"] = bmp_temp_data["timestamp"];
-
-    // JsonObject voltmeter_data = doc[voltmeter_id].to<JsonObject>();
-    // voltmeter_data["value"] = voltmeter_reading.voltage;
-    // voltmeter_data["raw_value"] = voltmeter_reading.raw_voltage;
-    // voltmeter_data["timestamp"] = packet.timestamp;
-
-    // JsonObject amperimeter_data = doc[amperimeter_id].to<JsonObject>();
-    // amperimeter_data["value"] = amperimeter_reading.current;
-    // amperimeter_data["raw_voltage"] = amperimeter_reading.raw_voltage;
-    // amperimeter_data["measured_voltage"] = amperimeter_reading.measured_voltage;
-    // amperimeter_data["timestamp"] = packet.timestamp;
-
-    // doc.shrinkToFit();
-
 }
+
+
+void setup(){
+    Serial.begin(115200);
+    Serial.println("Metereolog Weather Station ARU 01 Starting...");
+    setup_display();
+    display->display_message("Metereolog Weather Station\nARU 01 Starting...");
+    try {
+        setup_i2c();
+        setup_network();
+        setup_rtc();
+        setup_sensors();
+    } catch (const std::runtime_error& error) {
+        esp_restart();
+    }
+    setup_sdcard();
+    // setup_webserver();
+    display->display_message("Configured!");
+    // loop();
+    // esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * 60ULL * uS_TO_S_FACTOR);
+    // esp_deep_sleep_start();
+};
 
 void loop() {
     unsigned long currentMillis = millis();
@@ -542,3 +505,4 @@ void loop() {
     // Serial.println(time); */
     delay(100);
 }
+

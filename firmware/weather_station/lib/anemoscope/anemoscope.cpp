@@ -12,7 +12,6 @@ WindDirectionInfo Anemoscope::read() {
     int raw = analogRead((uint8_t)pin);
     info.voltage = raw * (1.7 / 4095.0);
     lastVoltage = info.voltage;
-    Serial.print("\nAnemoscope: "); Serial.println(info.voltage);
 
     // Determines angle
     if (info.voltage >= 1.7 ) info.angle = 45; // NE

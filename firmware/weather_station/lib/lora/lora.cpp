@@ -85,13 +85,12 @@ bool LoRa::send_message(String message) {
     Serial.print(F("Enviando pacote ")); Serial.println(message);
     int state = this->radio->transmit(message); 
     if (state == RADIOLIB_ERR_NONE) {
+        // this->radio->sleep();
         return true;
-    } else {
-        Serial.print("Error while sending message. Error code: ");
-        Serial.print(state);
-        Serial.println();
-        return false;
-    }
+    } 
+    Serial.print("Error while sending message. Error code: ");
+    Serial.println(state);
+    return false;
 }
 
 void LoRa::sleep() {
